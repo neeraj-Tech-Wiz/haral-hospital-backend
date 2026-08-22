@@ -23,6 +23,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
+    /**
+     * Endpoints that should completely bypass JWT processing.
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+
+        String path = request.getServletPath();
+
+        // Public endpoints
+        if (path.equals("/api/health")) {
+            return true;
+        }
+
+        if (path.equals("/api/admin/login")) {
+            return true;
+        }
+
+        // Allow CORS preflight requests
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+
+        return false;
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
