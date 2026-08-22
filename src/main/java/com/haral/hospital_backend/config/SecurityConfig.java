@@ -37,6 +37,10 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // ===============================
+    // CORS CONFIGURATION
+    // ===============================
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
@@ -45,7 +49,8 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(
                 List.of(
-                        "http://localhost:5173"
+                        "http://localhost:5173",
+                        "https://haral-hospital-frontend.vercel.app"
                 )
         );
 
@@ -79,27 +84,43 @@ public class SecurityConfig {
         return source;
     }
 
+    // ===============================
+    // SECURITY FILTER CHAIN
+    // ===============================
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
 
         http
-                .cors(cors -> cors.configurationSource(
-                        corsConfigurationSource()
-                ))
 
-                .csrf(csrf -> csrf.disable())
+                // CORS
+                .cors(cors ->
+                        cors.configurationSource(
+                                corsConfigurationSource()
+                        )
+                )
 
+                // CSRF disabled for JWT REST API
+                .csrf(csrf ->
+                        csrf.disable()
+                )
+
+                // JWT = stateless
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
+                // ===============================
+                // AUTHORIZATION
+                // ===============================
+
                 .authorizeHttpRequests(auth -> auth
 
-                        // OPTIONS / CORS preflight
+                        // CORS preflight
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
@@ -143,10 +164,17 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                .formLogin(form -> form.disable())
+                // Disable browser login
+                .formLogin(form ->
+                        form.disable()
+                )
 
-                .httpBasic(basic -> basic.disable())
+                // Disable HTTP Basic
+                .httpBasic(basic ->
+                        basic.disable()
+                )
 
+                // JWT filter
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
