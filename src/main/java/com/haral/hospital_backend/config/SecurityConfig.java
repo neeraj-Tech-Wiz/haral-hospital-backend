@@ -130,6 +130,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/admin/login"
                         ).permitAll()
+                        .requestMatchers("/api/health").permitAll()
 
                         // Patient creates appointment
                         .requestMatchers(
