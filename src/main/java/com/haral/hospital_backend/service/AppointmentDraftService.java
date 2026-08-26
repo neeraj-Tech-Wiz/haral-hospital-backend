@@ -13,6 +13,7 @@ public class AppointmentDraftService {
 
     private final AppointmentDraftRepository appointmentDraftRepository;
 
+    private static final int ABANDON_TIMEOUT_MINUTES = 10;
 
     public AppointmentDraftService(
             AppointmentDraftRepository appointmentDraftRepository) {
@@ -23,82 +24,122 @@ public class AppointmentDraftService {
 
 
     // =====================================================
-    // CREATE OR UPDATE DRAFT
+    // CREATE / UPDATE DRAFT
     // =====================================================
 
     public AppointmentDraft saveDraft(
-            Long draftId,
             String patientName,
             String phone) {
 
-        LocalDateTime now =
-                LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+
+        // Clean old drafts first
+        markInactiveDraftsAsAbandoned();
+
+        AppointmentDraft draft =
+                appointmentDraftRepository
+                        .findFirstByPhoneAndStatus(
+                                phone,
+                                "FILLING"
+                        )
+                        .orElse(null);
 
 
-        // =================================================
-        // UPDATE EXISTING DRAFT
-        // =================================================
+        // Existing active draft
+        if (draft != null) {
 
-        if (draftId != null) {
+            draft.setPatientName(patientName);
+            draft.setLastActiveAt(now);
 
-            AppointmentDraft draft =
-                    appointmentDraftRepository
-                            .findById(draftId)
-                            .orElse(null);
-
-
-            if (draft != null
-                    && "FILLING".equals(
-                    draft.getStatus())) {
-
-                draft.setPatientName(patientName);
-
-                draft.setPhone(phone);
-
-                draft.setLastActiveAt(now);
-
-
-                return appointmentDraftRepository.save(
-                        draft
-                );
-            }
+            return appointmentDraftRepository.save(draft);
         }
 
 
-        // =================================================
-        // CREATE NEW DRAFT
-        // =================================================
-
-        AppointmentDraft draft =
-                new AppointmentDraft();
+        // New draft
+        draft = new AppointmentDraft();
 
         draft.setPatientName(patientName);
-
         draft.setPhone(phone);
-
         draft.setStatus("FILLING");
-
         draft.setCreatedAt(now);
-
         draft.setLastActiveAt(now);
 
-
-        return appointmentDraftRepository.save(
-                draft
-        );
+        return appointmentDraftRepository.save(draft);
     }
 
 
     // =====================================================
-    // GET ACTIVE DRAFTS
+    // CURRENTLY ACTIVE
     // =====================================================
 
     public List<AppointmentDraft> getActiveDrafts() {
+
+        markInactiveDraftsAsAbandoned();
 
         return appointmentDraftRepository
                 .findByStatusOrderByLastActiveAtDesc(
                         "FILLING"
                 );
+    }
+
+
+    // =====================================================
+    // ALL DRAFTS
+    // =====================================================
+
+    public List<AppointmentDraft> getAllDraftsForAdmin() {
+
+        // Important:
+        // First update stale FILLING records.
+
+        markInactiveDraftsAsAbandoned();
+
+        return appointmentDraftRepository
+                .findAllByOrderByLastActiveAtDesc();
+    }
+
+
+    // =====================================================
+    // ABANDONED
+    // =====================================================
+
+    public List<AppointmentDraft> getAbandonedDrafts() {
+
+        markInactiveDraftsAsAbandoned();
+
+        return appointmentDraftRepository
+                .findByStatusOrderByLastActiveAtDesc(
+                        "ABANDONED"
+                );
+    }
+
+
+    // =====================================================
+    // MARK OLD FILLING AS ABANDONED
+    // =====================================================
+
+    public void markInactiveDraftsAsAbandoned() {
+
+        LocalDateTime cutoff =
+                LocalDateTime.now()
+                        .minusMinutes(
+                                ABANDON_TIMEOUT_MINUTES
+                        );
+
+        List<AppointmentDraft> staleDrafts =
+                appointmentDraftRepository
+                        .findByStatusAndLastActiveAtBefore(
+                                "FILLING",
+                                cutoff
+                        );
+
+
+        for (AppointmentDraft draft : staleDrafts) {
+
+            draft.setStatus("ABANDONED");
+
+            appointmentDraftRepository.save(draft);
+        }
     }
 
 
@@ -121,39 +162,34 @@ public class AppointmentDraftService {
                             LocalDateTime.now()
                     );
 
-                    appointmentDraftRepository.save(
-                            draft
-                    );
+                    appointmentDraftRepository.save(draft);
                 });
     }
-    public void markAsSubmitted(Long id) {
+    public AppointmentDraft updateDraft(
+            Long id,
+            String patientName,
+            String phone) {
 
         AppointmentDraft draft =
                 appointmentDraftRepository
                         .findById(id)
                         .orElseThrow(() ->
                                 new RuntimeException(
-                                        "Draft not found with id: " + id
+                                        "Appointment draft not found with id: " + id
                                 )
                         );
 
-        draft.setStatus("SUBMITTED");
+        // Don't modify completed/abandoned drafts.
+        if (!"FILLING".equals(draft.getStatus())) {
+            throw new RuntimeException(
+                    "Appointment draft is no longer active"
+            );
+        }
 
-        draft.setLastActiveAt(
-                LocalDateTime.now()
-        );
+        draft.setPatientName(patientName);
+        draft.setPhone(phone);
+        draft.setLastActiveAt(LocalDateTime.now());
 
-        appointmentDraftRepository.save(draft);
-    }
-    // =====================================================
-    // GET ALL ADMIN DRAFT ACTIVITY
-    // =====================================================
-
-    public List<AppointmentDraft> getAdminDrafts() {
-
-        return appointmentDraftRepository
-                .findByStatusInOrderByLastActiveAtDesc(
-                        List.of("FILLING", "ABANDONED")
-                );
+        return appointmentDraftRepository.save(draft);
     }
 }

@@ -29,7 +29,8 @@ public class SecurityConfig {
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter) {
 
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.jwtAuthenticationFilter =
+                jwtAuthenticationFilter;
     }
 
     @Bean
@@ -37,9 +38,9 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // ===============================
-    // CORS CONFIGURATION
-    // ===============================
+    // =====================================================
+    // CORS
+    // =====================================================
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -84,9 +85,9 @@ public class SecurityConfig {
         return source;
     }
 
-    // ===============================
-    // SECURITY FILTER CHAIN
-    // ===============================
+    // =====================================================
+    // SECURITY
+    // =====================================================
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -95,99 +96,192 @@ public class SecurityConfig {
 
         http
 
+                // =================================================
                 // CORS
+                // =================================================
+
                 .cors(cors ->
                         cors.configurationSource(
                                 corsConfigurationSource()
                         )
                 )
 
-                // CSRF disabled for JWT REST API
+                // =================================================
+                // CSRF
+                // =================================================
+
                 .csrf(csrf ->
                         csrf.disable()
                 )
 
-                // JWT = stateless
+                // =================================================
+                // STATELESS JWT SESSION
+                // =================================================
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
-                // ===============================
+                // =================================================
                 // AUTHORIZATION
-                // ===============================
+                // =================================================
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // CORS preflight
+                        // -----------------------------------------
+                        // CORS PRE-FLIGHT
+                        // -----------------------------------------
+
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
+
+                        // -----------------------------------------
+                        // PUBLIC ENDPOINTS
+                        // -----------------------------------------
+
                         // Admin login
                         .requestMatchers(
                                 "/api/admin/login"
                         ).permitAll()
-                        .requestMatchers("/api/health").permitAll()
 
-                        // Patient creates appointment
-                                // Patient creates appointment
-                                .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/api/appointments"
-                                ).permitAll()
+                        // Health check
+                        .requestMatchers(
+                                "/api/health"
+                        ).permitAll()
 
-                        // Patient creates/updates appointment draft
-                                .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/api/appointment-drafts"
-                                ).permitAll()
 
-                        // Admin reads active drafts
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/api/appointment-drafts/active"
-                                ).authenticated()
-                        // Admin reads appointments
+                        // -----------------------------------------
+                        // PATIENT APPOINTMENT
+                        // -----------------------------------------
+
+                        // Patient submits final appointment
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/appointments"
+                        ).permitAll()
+
+
+                        // -----------------------------------------
+                        // PATIENT APPOINTMENT DRAFT
+                        // -----------------------------------------
+
+                        // Create new draft
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/appointment-drafts"
+                        ).permitAll()
+
+                        // Update existing draft
+                        //
+                        // Example:
+                        // PUT /api/appointment-drafts/29
+                        //
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/appointment-drafts/*"
+                        ).permitAll()
+
+                        // Mark draft as submitted
+                        //
+                        // Example:
+                        // PUT /api/appointment-drafts/29/submitted
+                        //
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/appointment-drafts/*/submitted"
+                        ).permitAll()
+
+
+                        // -----------------------------------------
+                        // ADMIN APPOINTMENT DRAFTS
+                        // -----------------------------------------
+
+                        // Currently filling
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/appointment-drafts/active"
+                        ).authenticated()
+
+                        // All draft history
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/appointment-drafts/all"
+                        ).authenticated()
+
+                        // Abandoned drafts
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/appointment-drafts/abandoned"
+                        ).authenticated()
+
+                        // Admin endpoint, if your frontend uses it
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/appointment-drafts/admin"
+                        ).authenticated()
+
+
+                        // -----------------------------------------
+                        // ADMIN APPOINTMENTS
+                        // -----------------------------------------
+
+                        // Get all appointments
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/appointments"
                         ).authenticated()
 
+                        // Get appointment by ID
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/appointments/**"
                         ).authenticated()
 
-                        // Admin updates appointments
+                        // Update appointment status
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/appointments/**"
                         ).authenticated()
 
-                        // Admin deletes appointments
+                        // Delete appointment
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/api/appointments/**"
                         ).authenticated()
 
-                        // Everything else
+
+                        // -----------------------------------------
+                        // EVERYTHING ELSE
+                        // -----------------------------------------
+
                         .anyRequest().authenticated()
                 )
 
-                // Disable browser login
+                // =================================================
+                // DISABLE FORM LOGIN
+                // =================================================
+
                 .formLogin(form ->
                         form.disable()
                 )
 
-                // Disable HTTP Basic
+                // =================================================
+                // DISABLE HTTP BASIC
+                // =================================================
+
                 .httpBasic(basic ->
                         basic.disable()
                 )
 
-                // JWT filter
+                // =================================================
+                // JWT FILTER
+                // =================================================
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class

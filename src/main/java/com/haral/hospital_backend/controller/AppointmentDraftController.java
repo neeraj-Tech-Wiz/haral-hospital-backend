@@ -29,30 +29,10 @@ public class AppointmentDraftController {
 
     @PostMapping
     public ResponseEntity<AppointmentDraft> saveDraft(
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, String> request) {
 
-        String patientName =
-                request.get("patientName") != null
-                        ? request.get("patientName").toString()
-                        : null;
-
-        String phone =
-                request.get("phone") != null
-                        ? request.get("phone").toString()
-                        : null;
-
-        Long draftId = null;
-
-        if (request.get("draftId") != null) {
-            try {
-                draftId = Long.valueOf(
-                        request.get("draftId").toString()
-                );
-            } catch (NumberFormatException ignored) {
-                // Treat invalid draftId as null
-            }
-        }
-
+        String patientName = request.get("patientName");
+        String phone = request.get("phone");
 
         if (patientName == null
                 || patientName.trim().isEmpty()
@@ -62,21 +42,18 @@ public class AppointmentDraftController {
             return ResponseEntity.badRequest().build();
         }
 
-
         AppointmentDraft draft =
                 appointmentDraftService.saveDraft(
-                        draftId,
                         patientName.trim(),
                         phone.trim()
                 );
-
 
         return ResponseEntity.ok(draft);
     }
 
 
     // =====================================================
-    // GET ACTIVE DRAFTS
+    // ACTIVE DRAFTS
     // =====================================================
 
     @GetMapping("/active")
@@ -86,43 +63,74 @@ public class AppointmentDraftController {
                 appointmentDraftService.getActiveDrafts()
         );
     }
-    @PutMapping("/{id}/submitted")
-    public ResponseEntity<?> markAsSubmitted(
-            @PathVariable Long id) {
 
-        try {
 
-            appointmentDraftService.markAsSubmitted(id);
-
-            return ResponseEntity.ok(
-                    Map.of(
-                            "success", true,
-                            "message", "Draft marked as submitted"
-                    )
-            );
-
-        } catch (RuntimeException e) {
-
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            Map.of(
-                                    "success", false,
-                                    "message", e.getMessage()
-                            )
-                    );
-        }
-    }
     // =====================================================
-    // GET ADMIN DRAFT HISTORY
-    // Includes FILLING + ABANDONED
+    // ALL DRAFTS FOR ADMIN
     // =====================================================
 
-    @GetMapping("/admin")
-    public ResponseEntity<List<AppointmentDraft>> getAdminDrafts() {
+    @GetMapping("/all")
+    public ResponseEntity<List<AppointmentDraft>> getAllDrafts() {
 
         return ResponseEntity.ok(
-                appointmentDraftService.getAdminDrafts()
+                appointmentDraftService.getAllDraftsForAdmin()
         );
+    }
+
+
+    // =====================================================
+    // ABANDONED DRAFTS
+    // =====================================================
+
+    @GetMapping("/abandoned")
+    public ResponseEntity<List<AppointmentDraft>> getAbandonedDrafts() {
+
+        return ResponseEntity.ok(
+                appointmentDraftService.getAbandonedDrafts()
+        );
+    }
+
+
+    // =====================================================
+    // MARK AS SUBMITTED
+    // =====================================================
+
+    @PutMapping("/submitted/{phone}")
+    public ResponseEntity<?> markAsSubmitted(
+            @PathVariable String phone) {
+
+        appointmentDraftService.markAsSubmitted(phone);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "Draft marked as submitted"
+                )
+        );
+    }
+    @PutMapping("/{id}")
+    public ResponseEntity<AppointmentDraft> updateDraft(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request) {
+
+        String patientName = request.get("patientName");
+        String phone = request.get("phone");
+
+        if (patientName == null
+                || patientName.trim().isEmpty()
+                || phone == null
+                || phone.trim().isEmpty()) {
+
+            return ResponseEntity.badRequest().build();
+        }
+
+        AppointmentDraft updated =
+                appointmentDraftService.updateDraft(
+                        id,
+                        patientName.trim(),
+                        phone.trim()
+                );
+
+        return ResponseEntity.ok(updated);
     }
 }
