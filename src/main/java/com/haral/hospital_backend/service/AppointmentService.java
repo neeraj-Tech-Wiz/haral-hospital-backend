@@ -2,6 +2,8 @@ package com.haral.hospital_backend.service;
 
 import com.haral.hospital_backend.entity.Appointment;
 import com.haral.hospital_backend.repository.AppointmentRepository;
+import com.haral.hospital_backend.repository.AppointmentDraftRepository;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,39 +13,77 @@ import java.util.Optional;
 public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
+    private final AppointmentDraftService appointmentDraftService;
 
-    public AppointmentService(AppointmentRepository appointmentRepository) {
+    public AppointmentService(
+            AppointmentRepository appointmentRepository,
+            AppointmentDraftService appointmentDraftService) {
+
         this.appointmentRepository = appointmentRepository;
+        this.appointmentDraftService = appointmentDraftService;
     }
 
-    // Create a new appointment
-    public Appointment createAppointment(Appointment appointment) {
+
+    // =====================================================
+    // CREATE APPOINTMENT
+    // =====================================================
+
+    public Appointment createAppointment(
+            Appointment appointment) {
+
         appointment.setStatus("PENDING");
-        return appointmentRepository.save(appointment);
+
+        Appointment savedAppointment =
+                appointmentRepository.save(appointment);
+
+        // Patient actually submitted the appointment
+        appointmentDraftService.markAsSubmitted(
+                appointment.getPhone()
+        );
+
+        return savedAppointment;
     }
 
-    // Get all appointments
+
+    // =====================================================
+    // GET ALL APPOINTMENTS
+    // =====================================================
+
     public List<Appointment> getAllAppointments() {
+
         return appointmentRepository.findAll();
     }
 
-    // Get appointment by ID
+
+    // =====================================================
+    // GET APPOINTMENT BY ID
+    // =====================================================
+
     public Optional<Appointment> getAppointmentById(Long id) {
+
         return appointmentRepository.findById(id);
     }
 
-    // Update appointment status
-    public Appointment updateStatus(Long id, String status) {
 
-        Appointment appointment = appointmentRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Appointment not found with id: " + id
-                        )
-                );
+    // =====================================================
+    // UPDATE APPOINTMENT STATUS
+    // =====================================================
 
-        // Allow only valid appointment statuses
+    public Appointment updateStatus(
+            Long id,
+            String status) {
+
+        Appointment appointment =
+                appointmentRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Appointment not found with id: "
+                                                + id
+                                )
+                        );
+
+
         if (!status.equals("PENDING")
                 && !status.equals("CONFIRMED")
                 && !status.equals("REJECTED")) {
@@ -58,10 +98,15 @@ public class AppointmentService {
         return appointmentRepository.save(appointment);
     }
 
-    // Delete appointment
+
+    // =====================================================
+    // DELETE APPOINTMENT
+    // =====================================================
+
     public void deleteAppointment(Long id) {
 
         if (!appointmentRepository.existsById(id)) {
+
             throw new RuntimeException(
                     "Appointment not found with id: " + id
             );

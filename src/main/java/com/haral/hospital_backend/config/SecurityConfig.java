@@ -133,11 +133,23 @@ public class SecurityConfig {
                         .requestMatchers("/api/health").permitAll()
 
                         // Patient creates appointment
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/appointments"
-                        ).permitAll()
+                                // Patient creates appointment
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/appointments"
+                                ).permitAll()
 
+                        // Patient creates/updates appointment draft
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/appointment-drafts"
+                                ).permitAll()
+
+                        // Admin reads active drafts
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/appointment-drafts/active"
+                                ).authenticated()
                         // Admin reads appointments
                         .requestMatchers(
                                 HttpMethod.GET,
