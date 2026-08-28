@@ -29,9 +29,12 @@ public class SecurityConfig {
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter) {
 
-        this.jwtAuthenticationFilter =
-                jwtAuthenticationFilter;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
+
+    // =====================================================
+    // PASSWORD ENCODER
+    // =====================================================
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -115,7 +118,7 @@ public class SecurityConfig {
                 )
 
                 // =================================================
-                // STATELESS JWT SESSION
+                // STATELESS JWT
                 // =================================================
 
                 .sessionManagement(session ->
@@ -140,12 +143,13 @@ public class SecurityConfig {
                         ).permitAll()
 
 
-                        // -----------------------------------------
+                        // =========================================
                         // PUBLIC ENDPOINTS
-                        // -----------------------------------------
+                        // =========================================
 
                         // Admin login
                         .requestMatchers(
+                                HttpMethod.POST,
                                 "/api/admin/login"
                         ).permitAll()
 
@@ -155,51 +159,61 @@ public class SecurityConfig {
                         ).permitAll()
 
 
-                        // -----------------------------------------
-                        // PATIENT APPOINTMENT
-                        // -----------------------------------------
+                        // =========================================
+                        // PUBLIC DOCTOR DATA
+                        // =========================================
 
-                        // Patient submits final appointment
+                        // Patients / website visitors can see doctors
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/doctors"
+                        ).permitAll()
+
+                        // If your public Doctors page requests
+                        // a specific doctor by ID
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/doctors/*"
+                        ).permitAll()
+
+
+                        // =========================================
+                        // PATIENT APPOINTMENT
+                        // =========================================
+
+                        // Patient submits appointment
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/appointments"
                         ).permitAll()
 
 
-                        // -----------------------------------------
+                        // =========================================
                         // PATIENT APPOINTMENT DRAFT
-                        // -----------------------------------------
+                        // =========================================
 
-                        // Create new draft
+                        // Create draft
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/appointment-drafts"
                         ).permitAll()
 
-                        // Update existing draft
-                        //
-                        // Example:
-                        // PUT /api/appointment-drafts/29
-                        //
+                        // Update draft
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/appointment-drafts/*"
                         ).permitAll()
 
                         // Mark draft as submitted
-                        //
-                        // Example:
-                        // PUT /api/appointment-drafts/29/submitted
-                        //
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/appointment-drafts/*/submitted"
                         ).permitAll()
 
 
-                        // -----------------------------------------
+                        // =========================================
                         // ADMIN APPOINTMENT DRAFTS
-                        // -----------------------------------------
+                        // =========================================
 
                         // Currently filling
                         .requestMatchers(
@@ -219,16 +233,16 @@ public class SecurityConfig {
                                 "/api/appointment-drafts/abandoned"
                         ).authenticated()
 
-                        // Admin endpoint, if your frontend uses it
+                        // Admin draft endpoint
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/appointment-drafts/admin"
                         ).authenticated()
 
 
-                        // -----------------------------------------
+                        // =========================================
                         // ADMIN APPOINTMENTS
-                        // -----------------------------------------
+                        // =========================================
 
                         // Get all appointments
                         .requestMatchers(
@@ -242,7 +256,7 @@ public class SecurityConfig {
                                 "/api/appointments/**"
                         ).authenticated()
 
-                        // Update appointment status
+                        // Update appointment
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/appointments/**"
@@ -255,9 +269,38 @@ public class SecurityConfig {
                         ).authenticated()
 
 
-                        // -----------------------------------------
+                        // =========================================
+                        // ADMIN DOCTOR MANAGEMENT
+                        // =========================================
+
+                        // Create doctor
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/doctors"
+                        ).authenticated()
+
+                        // Update doctor
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/doctors/**"
+                        ).authenticated()
+
+                        // Delete doctor
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/doctors/**"
+                        ).authenticated()
+
+                        // Upload / replace doctor image
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/doctors/*/image"
+                        ).authenticated()
+
+
+                        // =========================================
                         // EVERYTHING ELSE
-                        // -----------------------------------------
+                        // =========================================
 
                         .anyRequest().authenticated()
                 )
