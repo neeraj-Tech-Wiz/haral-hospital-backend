@@ -63,6 +63,7 @@ public class SecurityConfig {
                         "GET",
                         "POST",
                         "PUT",
+                        "PATCH",
                         "DELETE",
                         "OPTIONS"
                 )
@@ -290,6 +291,17 @@ public class SecurityConfig {
                                 HttpMethod.DELETE,
                                 "/api/doctors/**"
                         ).authenticated()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/hospital-info"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/facilities"
+                        ).permitAll()
+
 
                         // Upload / replace doctor image
                         .requestMatchers(
