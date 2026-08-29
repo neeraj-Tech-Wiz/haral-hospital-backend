@@ -440,4 +440,159 @@ public class SupabaseStorageService {
                 + "/"
                 + fileName;
     }
+    // =========================================================
+// SPECIALITY IMAGE UPLOAD
+// =========================================================
+
+    public String uploadSpecialityImage(
+            MultipartFile file,
+            Long specialityId
+    ) throws IOException, InterruptedException {
+
+        if (file == null || file.isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "Speciality image is required"
+            );
+        }
+
+        String contentType = file.getContentType();
+
+        if (contentType == null ||
+                (!contentType.equals("image/jpeg")
+                        && !contentType.equals("image/png")
+                        && !contentType.equals("image/webp"))) {
+
+            throw new IllegalArgumentException(
+                    "Only JPEG, PNG and WebP images are allowed"
+            );
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+
+            throw new IllegalArgumentException(
+                    "Image size must be less than 5 MB"
+            );
+        }
+
+        String extension;
+
+        if (contentType.equals("image/png")) {
+
+            extension = ".png";
+
+        } else if (contentType.equals("image/webp")) {
+
+            extension = ".webp";
+
+        } else {
+
+            extension = ".jpg";
+        }
+
+
+        // ---------------------------------------------------------
+        // UNIQUE FILE NAME
+        // ---------------------------------------------------------
+
+        String fileName =
+                "speciality-" +
+                        specialityId +
+                        "-" +
+                        UUID.randomUUID() +
+                        extension;
+
+
+        // ---------------------------------------------------------
+        // SPECIALITY BUCKET
+        // ---------------------------------------------------------
+
+        String specialityBucket =
+                "speciality-images";
+
+
+        // ---------------------------------------------------------
+        // SUPABASE UPLOAD URL
+        // ---------------------------------------------------------
+
+        String uploadUrl =
+                supabaseUrl +
+                        "/storage/v1/object/" +
+                        specialityBucket +
+                        "/" +
+                        fileName;
+
+
+        // ---------------------------------------------------------
+        // UPLOAD
+        // ---------------------------------------------------------
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(uploadUrl))
+
+                        .header(
+                                "Authorization",
+                                "Bearer " + serviceKey
+                        )
+
+                        .header(
+                                "apikey",
+                                serviceKey
+                        )
+
+                        .header(
+                                "Content-Type",
+                                contentType
+                        )
+
+                        .header(
+                                "x-upsert",
+                                "true"
+                        )
+
+                        .POST(
+                                HttpRequest.BodyPublishers
+                                        .ofByteArray(
+                                                file.getBytes()
+                                        )
+                        )
+
+                        .build();
+
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers
+                                .ofString()
+                );
+
+
+        // ---------------------------------------------------------
+        // CHECK RESPONSE
+        // ---------------------------------------------------------
+
+        if (response.statusCode() < 200 ||
+                response.statusCode() >= 300) {
+
+            throw new RuntimeException(
+                    "Supabase speciality image upload failed: "
+                            + response.statusCode()
+                            + " - "
+                            + response.body()
+            );
+        }
+
+
+        // ---------------------------------------------------------
+        // PUBLIC IMAGE URL
+        // ---------------------------------------------------------
+
+        return supabaseUrl
+                + "/storage/v1/object/public/"
+                + specialityBucket
+                + "/"
+                + fileName;
+    }
 }

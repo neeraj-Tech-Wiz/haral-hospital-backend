@@ -302,6 +302,10 @@ public class SecurityConfig {
                                 "/api/facilities"
                         ).permitAll()
 
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/specialities"
+                        ).permitAll()
 
                         // Upload / replace doctor image
                         .requestMatchers(
