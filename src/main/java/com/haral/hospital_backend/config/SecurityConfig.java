@@ -309,6 +309,15 @@ public class SecurityConfig {
                                 "/api/doctors/*/image"
                         ).authenticated()
 
+                        .requestMatchers(
+                                HttpMethod.GET, "/api/insurance"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/government-schemes"
+                        ).permitAll()
+
 
                         // =========================================
                         // EVERYTHING ELSE

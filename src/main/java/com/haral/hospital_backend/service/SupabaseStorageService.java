@@ -233,4 +233,211 @@ public class SupabaseStorageService {
             default -> "";
         };
     }
+    public String uploadHospitalImage(MultipartFile file)
+            throws IOException, InterruptedException {
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Hospital image is required"
+            );
+        }
+
+        String contentType = file.getContentType();
+
+        if (contentType == null ||
+                (!contentType.equals("image/jpeg")
+                        && !contentType.equals("image/png")
+                        && !contentType.equals("image/webp"))) {
+
+            throw new IllegalArgumentException(
+                    "Only JPEG, PNG and WebP images are allowed"
+            );
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException(
+                    "Image size must be less than 5 MB"
+            );
+        }
+
+        String extension;
+
+        if (contentType.equals("image/png")) {
+            extension = ".png";
+        } else if (contentType.equals("image/webp")) {
+            extension = ".webp";
+        } else {
+            extension = ".jpg";
+        }
+
+        String fileName =
+                "hospital-" +
+                        UUID.randomUUID() +
+                        extension;
+
+        String hospitalBucket = "hospital-images";
+
+        String uploadUrl =
+                supabaseUrl +
+                        "/storage/v1/object/" +
+                        hospitalBucket +
+                        "/" +
+                        fileName;
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(uploadUrl))
+                        .header(
+                                "Authorization",
+                                "Bearer " + serviceKey
+                        )
+                        .header(
+                                "apikey",
+                                serviceKey
+                        )
+                        .header(
+                                "Content-Type",
+                                contentType
+                        )
+                        .header(
+                                "x-upsert",
+                                "true"
+                        )
+                        .POST(
+                                HttpRequest.BodyPublishers.ofByteArray(
+                                        file.getBytes()
+                                )
+                        )
+                        .build();
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                );
+
+        if (response.statusCode() < 200 ||
+                response.statusCode() >= 300) {
+
+            throw new RuntimeException(
+                    "Supabase hospital image upload failed: "
+                            + response.statusCode()
+                            + " - "
+                            + response.body()
+            );
+        }
+
+        return supabaseUrl
+                + "/storage/v1/object/public/"
+                + hospitalBucket
+                + "/"
+                + fileName;
+    }
+    public String uploadGovernmentSchemeImage(
+            MultipartFile file,
+            Long schemeId
+    ) throws IOException, InterruptedException {
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Government scheme image is required"
+            );
+        }
+
+        String contentType = file.getContentType();
+
+        if (contentType == null ||
+                (!contentType.equals("image/jpeg")
+                        && !contentType.equals("image/png")
+                        && !contentType.equals("image/webp"))) {
+
+            throw new IllegalArgumentException(
+                    "Only JPEG, PNG and WebP images are allowed"
+            );
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException(
+                    "Image size must be less than 5 MB"
+            );
+        }
+
+        String extension;
+
+        if (contentType.equals("image/png")) {
+            extension = ".png";
+        } else if (contentType.equals("image/webp")) {
+            extension = ".webp";
+        } else {
+            extension = ".jpg";
+        }
+
+        String fileName =
+                "government-scheme-" +
+                        schemeId +
+                        "-" +
+                        UUID.randomUUID() +
+                        extension;
+
+        String bucket =
+                "government-scheme-images";
+
+        String uploadUrl =
+                supabaseUrl +
+                        "/storage/v1/object/" +
+                        bucket +
+                        "/" +
+                        fileName;
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(uploadUrl))
+                        .header(
+                                "Authorization",
+                                "Bearer " + serviceKey
+                        )
+                        .header(
+                                "apikey",
+                                serviceKey
+                        )
+                        .header(
+                                "Content-Type",
+                                contentType
+                        )
+                        .header(
+                                "x-upsert",
+                                "true"
+                        )
+                        .POST(
+                                HttpRequest.BodyPublishers
+                                        .ofByteArray(
+                                                file.getBytes()
+                                        )
+                        )
+                        .build();
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers
+                                .ofString()
+                );
+
+        if (response.statusCode() < 200 ||
+                response.statusCode() >= 300) {
+
+            throw new RuntimeException(
+                    "Supabase government scheme image upload failed: "
+                            + response.statusCode()
+                            + " - "
+                            + response.body()
+            );
+        }
+
+        return supabaseUrl
+                + "/storage/v1/object/public/"
+                + bucket
+                + "/"
+                + fileName;
+    }
 }
