@@ -3,6 +3,8 @@ package com.haral.hospital_backend.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.URI;
@@ -594,5 +596,331 @@ public class SupabaseStorageService {
                 + specialityBucket
                 + "/"
                 + fileName;
+    }
+    // =========================================================
+// PATIENT DOCUMENT UPLOAD
+// Private Supabase bucket
+// =========================================================
+
+    public String uploadPatientDocument(
+            MultipartFile file,
+            Long patientId
+    ) throws IOException, InterruptedException {
+
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Patient document is required"
+            );
+        }
+
+        String contentType = file.getContentType();
+
+        if (contentType == null) {
+            throw new IllegalArgumentException(
+                    "Unable to determine file type"
+            );
+        }
+
+        // -----------------------------------------------------
+        // ALLOWED FILE TYPES
+        // -----------------------------------------------------
+
+        boolean allowed =
+                contentType.equals("application/pdf")
+                        || contentType.equals("image/jpeg")
+                        || contentType.equals("image/png")
+                        || contentType.equals("image/webp")
+                        || contentType.equals("application/msword")
+                        || contentType.equals(
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                );
+
+        if (!allowed) {
+            throw new IllegalArgumentException(
+                    "Only PDF, JPG, PNG, WEBP, DOC and DOCX files are allowed"
+            );
+        }
+
+        // -----------------------------------------------------
+        // MAX SIZE — 10 MB
+        // -----------------------------------------------------
+
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new IllegalArgumentException(
+                    "Patient document size must be less than 10 MB"
+            );
+        }
+
+        // -----------------------------------------------------
+        // EXTENSION
+        // -----------------------------------------------------
+
+        String extension =
+                getPatientDocumentExtension(contentType);
+
+        // -----------------------------------------------------
+        // UNIQUE STORAGE PATH
+        // Organize files by patient
+        // -----------------------------------------------------
+
+        String fileName =
+                "patient-"
+                        + patientId
+                        + "-"
+                        + UUID.randomUUID()
+                        + extension;
+
+        String storagePath =
+                "patient-" + patientId + "/" + fileName;
+
+        String bucket =
+                "patient-documents";
+
+        // -----------------------------------------------------
+        // SUPABASE UPLOAD URL
+        // -----------------------------------------------------
+
+        String uploadUrl =
+                supabaseUrl
+                        + "/storage/v1/object/"
+                        + bucket
+                        + "/"
+                        + storagePath;
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(uploadUrl))
+                        .header(
+                                "Authorization",
+                                "Bearer " + serviceKey
+                        )
+                        .header(
+                                "apikey",
+                                serviceKey
+                        )
+                        .header(
+                                "Content-Type",
+                                contentType
+                        )
+                        .header(
+                                "x-upsert",
+                                "false"
+                        )
+                        .POST(
+                                HttpRequest.BodyPublishers
+                                        .ofByteArray(
+                                                file.getBytes()
+                                        )
+                        )
+                        .build();
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                );
+
+        if (response.statusCode() < 200 ||
+                response.statusCode() >= 300) {
+
+            throw new RuntimeException(
+                    "Patient document upload failed: "
+                            + response.statusCode()
+                            + " - "
+                            + response.body()
+            );
+        }
+
+        // IMPORTANT:
+        // Return storage PATH, NOT public URL.
+        return storagePath;
+    }
+    // =========================================================
+// GENERATE SIGNED URL
+// Valid temporarily for viewing/downloading
+// =========================================================
+// =========================================================
+// GENERATE SIGNED URL
+// =========================================================
+
+    public String createPatientDocumentSignedUrl(
+            String storagePath
+    ) throws IOException, InterruptedException {
+
+        String bucket =
+                "patient-documents";
+
+        String signUrl =
+                supabaseUrl
+                        + "/storage/v1/object/sign/"
+                        + bucket
+                        + "/"
+                        + storagePath;
+
+        String body =
+                "{\"expiresIn\":3600}";
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(signUrl))
+                        .header(
+                                "Authorization",
+                                "Bearer " + serviceKey
+                        )
+                        .header(
+                                "apikey",
+                                serviceKey
+                        )
+                        .header(
+                                "Content-Type",
+                                "application/json"
+                        )
+                        .POST(
+                                HttpRequest.BodyPublishers
+                                        .ofString(body)
+                        )
+                        .build();
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                );
+
+        if (response.statusCode() < 200 ||
+                response.statusCode() >= 300) {
+
+            throw new RuntimeException(
+                    "Failed to generate signed URL: "
+                            + response.statusCode()
+                            + " - "
+                            + response.body()
+            );
+        }
+
+        ObjectMapper objectMapper =
+                new ObjectMapper();
+
+        JsonNode json =
+                objectMapper.readTree(
+                        response.body()
+                );
+
+        String signedUrl =
+                json.get("signedURL").asText();
+
+
+        // =====================================================
+        // FIX SUPABASE SIGNED URL PATH
+        // =====================================================
+
+        if (signedUrl.startsWith("/object/sign/")) {
+
+            signedUrl =
+                    supabaseUrl
+                            + "/storage/v1"
+                            + signedUrl;
+
+        } else if (signedUrl.startsWith("/storage/v1/object/sign/")) {
+
+            signedUrl =
+                    supabaseUrl
+                            + signedUrl;
+
+        } else if (!signedUrl.startsWith("http")) {
+
+            signedUrl =
+                    supabaseUrl
+                            + "/storage/v1"
+                            + (
+                            signedUrl.startsWith("/")
+                                    ? signedUrl
+                                    : "/" + signedUrl
+                    );
+        }
+
+
+        return signedUrl;
+    }
+    // =========================================================
+// DELETE PATIENT DOCUMENT
+// =========================================================
+
+    public void deletePatientDocument(
+            String storagePath
+    ) throws IOException, InterruptedException {
+
+        String bucket =
+                "patient-documents";
+
+        String deleteUrl =
+                supabaseUrl
+                        + "/storage/v1/object/"
+                        + bucket
+                        + "/"
+                        + storagePath;
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(deleteUrl))
+                        .header(
+                                "Authorization",
+                                "Bearer " + serviceKey
+                        )
+                        .header(
+                                "apikey",
+                                serviceKey
+                        )
+                        .DELETE()
+                        .build();
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                );
+
+        if (response.statusCode() < 200 ||
+                response.statusCode() >= 300) {
+
+            throw new RuntimeException(
+                    "Patient document deletion failed: "
+                            + response.statusCode()
+                            + " - "
+                            + response.body()
+            );
+        }
+    }
+    // =========================================================
+// PATIENT DOCUMENT EXTENSION
+// =========================================================
+
+    private String getPatientDocumentExtension(
+            String contentType
+    ) {
+
+        return switch (contentType) {
+
+            case "application/pdf" ->
+                    ".pdf";
+
+            case "image/jpeg" ->
+                    ".jpg";
+
+            case "image/png" ->
+                    ".png";
+
+            case "image/webp" ->
+                    ".webp";
+
+            case "application/msword" ->
+                    ".doc";
+
+            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ->
+                    ".docx";
+
+            default ->
+                    "";
+        };
     }
 }
