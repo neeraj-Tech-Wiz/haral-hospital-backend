@@ -1,0 +1,29 @@
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldBase has been called by com.google.inject.internal.aop.HiddenClassDefiner (file:/E:/apache-maven-3.9.11/lib/guice-5.1.0-classes.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.inject.internal.aop.HiddenClassDefiner
+WARNING: sun.misc.Unsafe::staticFieldBase will be removed in a future release
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< com.haral:hospital-backend >---------------------
+[INFO] Building  0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.5.0:clean (default-clean) @ hospital-backend ---
+[INFO] Deleting E:\HARAL_HOSPITAL\hospital-backend\target
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ hospital-backend ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ hospital-backend ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 57 source files with javac [debug parameters release 17] to target\classes
+[INFO] /E:/HARAL_HOSPITAL/hospital-backend/src/main/java/com/haral/hospital_backend/service/SupabaseStorageService.java: E:\HARAL_HOSPITAL\hospital-backend\src\main\java\com\haral\hospital_backend\service\SupabaseStorageService.java uses or overrides a deprecated API.
+[INFO] /E:/HARAL_HOSPITAL/hospital-backend/src/main/java/com/haral/hospital_backend/service/SupabaseStorageService.java: Recompile with -Xlint:deprecation for details.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.125 s
+[INFO] Finished at: 2026-09-03T22:03:49+05:30
+[INFO] ------------------------------------------------------------------------

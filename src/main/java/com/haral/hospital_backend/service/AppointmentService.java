@@ -2,8 +2,6 @@ package com.haral.hospital_backend.service;
 
 import com.haral.hospital_backend.entity.Appointment;
 import com.haral.hospital_backend.repository.AppointmentRepository;
-import com.haral.hospital_backend.repository.AppointmentDraftRepository;
-
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,13 +12,16 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final AppointmentDraftService appointmentDraftService;
+    private final WhatsAppService whatsAppService;
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
-            AppointmentDraftService appointmentDraftService) {
+            AppointmentDraftService appointmentDraftService,
+            WhatsAppService whatsAppService) {
 
         this.appointmentRepository = appointmentRepository;
         this.appointmentDraftService = appointmentDraftService;
+        this.whatsAppService = whatsAppService;
     }
 
 
@@ -28,8 +29,7 @@ public class AppointmentService {
     // CREATE APPOINTMENT
     // =====================================================
 
-    public Appointment createAppointment(
-            Appointment appointment) {
+    public Appointment createAppointment(Appointment appointment) {
 
         appointment.setStatus("PENDING");
 
@@ -69,21 +69,18 @@ public class AppointmentService {
     // UPDATE APPOINTMENT STATUS
     // =====================================================
 
-    public Appointment updateStatus(
-            Long id,
-            String status) {
+    public Appointment updateStatus(Long id, String status) {
 
         Appointment appointment =
                 appointmentRepository
                         .findById(id)
                         .orElseThrow(() ->
                                 new RuntimeException(
-                                        "Appointment not found with id: "
-                                                + id
+                                        "Appointment not found with id: " + id
                                 )
                         );
 
-
+        // Validate status
         if (!status.equals("PENDING")
                 && !status.equals("CONFIRMED")
                 && !status.equals("REJECTED")) {
@@ -93,9 +90,26 @@ public class AppointmentService {
             );
         }
 
+        // Send WhatsApp only when status changes
+        // from something else to CONFIRMED
+        boolean shouldSendWhatsApp =
+                status.equals("CONFIRMED")
+                        && !appointment.getStatus().equals("CONFIRMED");
+
         appointment.setStatus(status);
 
-        return appointmentRepository.save(appointment);
+        Appointment savedAppointment =
+                appointmentRepository.save(appointment);
+
+        // Send appointment confirmation WhatsApp
+        if (shouldSendWhatsApp) {
+
+            whatsAppService.sendAppointmentConfirmation(
+                    savedAppointment
+            );
+        }
+
+        return savedAppointment;
     }
 
 
